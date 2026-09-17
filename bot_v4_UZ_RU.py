@@ -18,17 +18,17 @@ PROMPT_JOURNALIST = load_prompt("prompts/01_journalist.md")
 PROMPT_EDITOR = load_prompt("prompts/02_editor.md")
 PROMPT_TITLES = load_prompt("prompts/03_title_gen.md")
 
-MODELS_FALLBACK = [
-    "llama3-8b-8192",
-    "llama3-70b-8192", 
-    "gemma2-9b-it",
-    "mixtral-8x7b-32768",
+MODELS_CURRENT = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-32b",
+    "llama-3.1-8b-instant",  # fallback if still cached
 ]
 
 async def run_agent(system_prompt, user_content, temp=0.3):
     def _call():
         last_err = None
-        for model in MODELS_FALLBACK:
+        for model in MODELS_CURRENT:
             try:
                 resp = client.chat.completions.create(
                     model=model,
@@ -38,11 +38,13 @@ async def run_agent(system_prompt, user_content, temp=0.3):
                     ],
                     temperature=temp
                 )
+                print(f"[Groq] Using model: {model}")
                 return resp.choices[0].message.content
             except Exception as e:
                 last_err = e
-                # if model_not_found, try next
-                if "model" in str(e).lower() and "not" in str(e).lower():
+                msg = str(e).lower()
+                if "decommissioned" in msg or "does not exist" in msg or "model_not_found" in msg or "invalid_request" in msg:
+                    print(f"[Groq] Model {model} failed, trying next: {e}")
                     continue
                 raise
         raise last_err
