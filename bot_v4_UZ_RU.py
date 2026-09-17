@@ -18,17 +18,34 @@ PROMPT_JOURNALIST = load_prompt("prompts/01_journalist.md")
 PROMPT_EDITOR = load_prompt("prompts/02_editor.md")
 PROMPT_TITLES = load_prompt("prompts/03_title_gen.md")
 
+MODELS_FALLBACK = [
+    "llama3-8b-8192",
+    "llama3-70b-8192", 
+    "gemma2-9b-it",
+    "mixtral-8x7b-32768",
+]
+
 async def run_agent(system_prompt, user_content, temp=0.3):
     def _call():
-        resp = client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ],
-            temperature=temp
-        )
-        return resp.choices[0].message.content
+        last_err = None
+        for model in MODELS_FALLBACK:
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    temperature=temp
+                )
+                return resp.choices[0].message.content
+            except Exception as e:
+                last_err = e
+                # if model_not_found, try next
+                if "model" in str(e).lower() and "not" in str(e).lower():
+                    continue
+                raise
+        raise last_err
     return await asyncio.to_thread(_call)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
