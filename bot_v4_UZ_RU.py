@@ -21,7 +21,7 @@ PROMPT_TITLES = load_prompt("prompts/03_title_gen.md")
 async def run_agent(system_prompt, user_content, temp=0.3):
     def _call():
         resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content}
